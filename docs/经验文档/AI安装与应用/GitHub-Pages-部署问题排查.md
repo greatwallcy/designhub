@@ -283,4 +283,116 @@ phase2/
 
 ---
 
+---
+
+## 🔧 工具模块路由与键名不一致问题
+
+### 问题现象
+
+首页「实用工具」里有 BOM辅助工具、设计工具、日常工具等卡片，点击后右侧显示"暂无工具"，或者点击具体工具后页面空白。
+
+### 根本原因
+
+**两处配置不一致**：
+
+1. **Home.vue 路由链接** → 跳转到 `/tool/BOM辅助工具`、`/tool/设计工具` 等
+2. **ToolCategory.vue 的 toolsMap** → 用英文缩写键名 `'bom'`、`'design'`
+3. **ToolDetail.vue 的 toolsData** → 用英文缩写键名 `'bom-bom-match'`、`'design-serial'`
+
+路由参数是**中文全称**，但 toolsMap 和 toolsData 的键名是**英文缩写**，导致查询失败。
+
+### 受影响文件
+
+| 文件 | 问题 |
+|------|------|
+| `src/views/Home.vue` | 链接跳转到 `/tool/BOM辅助工具` 等 |
+| `src/views/ToolCategory.vue` | `toolsMap` 键名用 `'bom'` 而不是 `'BOM辅助工具'` |
+| `src/views/ToolDetail.vue` | `toolsData` 键名用 `'bom-bom-match'` 而不是 `'BOM辅助工具-bom-match'` |
+
+### 修复方法
+
+**ToolCategory.vue** - toolsMap 键名必须与 Home.vue 传入的路由参数一致：
+
+```js
+// ❌ 错误 - 键名不匹配
+const toolsMap = {
+  'bom': { name: 'BOM辅助工具', children: [...] },
+  'design': { name: '设计工具', children: [...] },
+  'daily': { name: '日常工具', children: [...] },
+}
+
+// ✅ 正确 - 键名与路由参数一致
+const toolsMap = {
+  'BOM辅助工具': { name: 'BOM辅助工具', children: [...] },
+  '设计工具': { name: '设计工具', children: [...] },
+  '日常工具': { name: '日常工具', children: [...] },
+}
+```
+
+**ToolDetail.vue** - toolsData 键名格式为 `{toolId}-{toolDetailId}`：
+
+```js
+// ❌ 错误 - toolId 不匹配
+const toolsData = {
+  'bom-bom-match': { name: 'BOM匹配工具', type: 'external', url: '...' },
+  'design-serial': { name: '串口助手', type: 'serial' },
+  'daily-word': { name: 'Word文档', type: 'office', officeType: 'word' },
+}
+
+// ✅ 正确 - toolId 使用中文全称
+const toolsData = {
+  'BOM辅助工具-bom-match': { name: 'BOM匹配工具', type: 'external', url: '...' },
+  '设计工具-serial': { name: '串口助手', type: 'serial' },
+  '日常工具-word': { name: 'Word文档', type: 'office', officeType: 'word' },
+}
+```
+
+### 如何避免此类问题
+
+1. **统一 ID 命名规范**：工具分类 ID 在 Home.vue、ToolCategory.vue、ToolDetail.vue 三处必须完全一致
+2. **工具定义只在一处维护**：在 `src/views/ToolList.vue` 的 `tools` 数组定义一次，作为数据源
+3. **ToolCategory 和 ToolDetail 通过 ID 查找**：不要在 ToolCategory/ToolDetail 硬编码重复的工具数据
+4. **修改工具时全局搜索**：用 `grep` 搜索工具 ID，确保所有引用都同步更新
+
+### 正确的架构（建议改进）
+
+```js
+// src/data/tools.js - 工具数据统一在一处
+export const tools = [
+  {
+    id: 'BOM辅助工具',
+    name: 'BOM辅助工具',
+    icon: '📋',
+    children: [
+      { id: 'bom-match', name: 'BOM匹配工具' }
+    ]
+  },
+  {
+    id: '设计工具',
+    name: '设计工具',
+    children: [
+      { id: 'serial', name: '串口助手' }
+    ]
+  },
+  {
+    id: '日常工具',
+    name: '日常工具',
+    children: [
+      { id: 'word', name: 'Word文档' },
+      { id: 'excel', name: 'Excel表格' },
+      { id: 'ppt', name: 'PPT演示' }
+    ]
+  },
+]
+
+export const toolsData = {
+  'BOM辅助工具-bom-match': { name: 'BOM匹配工具', type: 'external', url: '...' },
+  '设计工具-serial': { name: '串口助手', type: 'serial' },
+  '日常工具-word': { name: 'Word文档', type: 'office', officeType: 'word' },
+  // ...
+}
+```
+
+然后在 Home.vue、ToolCategory.vue、ToolDetail.vue 中 import 这个数据源，而不是各自硬编码。
+
 > 📅 文档更新日期：2026-05-10
