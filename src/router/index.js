@@ -32,12 +32,17 @@ const routes = [
     component: ProjectDetail
   },
   {
-    path: '/documents/:category',
+    path: '/documents/:type',
     name: 'DocumentList',
     component: DocumentList
   },
   {
-    path: '/documents/:category/:docId',
+    path: '/documents/:type/:category',
+    name: 'DocumentCategory',
+    component: DocumentList
+  },
+  {
+    path: '/documents/:type/:category/:docId',
     name: 'DocumentDetail',
     component: DocumentDetail
   },
