@@ -559,3 +559,63 @@ const nextConfig = {
 | BOM 工具站 | `greatwallcy/designhub-bom` | `https://greatwallcy.github.io/designhub-bom/` |
 
 > 📅 文档更新日期：2026-05-11
+
+---
+
+## 🔴 紧急：Steam++ 加速器导致 GitHub 连接失败
+
+### 问题现象
+
+- `git push` 报错 `Failed to connect to github.com port 443`
+- `curl` 和浏览器访问 GitHub 超时
+- 之前能推送的仓库突然无法推送
+- BOM 站点能推送，主站不行
+
+### 根本原因
+
+**Steam++（Steam 加速器）在 Windows hosts 文件中把 GitHub 全系列域名解析到 127.0.0.1**，导致所有 GitHub 连接被劫持到本地而失败。
+
+受影响的域名包括但不限于：
+```
+github.com, api.github.com, github.io, raw.githubusercontent.com,
+githubusercontent.com, objects.githubusercontent.com, gist.github.com,
+hub.docker.com, greasyfork.org, dropbox.com, mega.co.nz 等几十个
+```
+
+### 快速修复
+
+用文本编辑器（管理员权限）打开 `C:\Windows\System32\drivers\etc\hosts`，找到 `# Steam++ Start` 到 `# Steam++ End` 之间的所有条目，**全部在前面加 `#` 注释掉**。
+
+修改后保存，hosts 文件立即生效。
+
+### 预防措施
+
+1. **关闭 Steam++ 后再操作 Git** - 加速器的 DNS 劫持会影响所有 Git 操作
+2. **或者只注释 GitHub 相关条目** - 保留 Steam 相关解析，继续加速 Steam
+3. **WSL 用户注意** - Windows hosts 修改后，WSL 内部可能还在用旧的 DNS 解析（WSL 有自己的 hosts 生成机制），需要重启 WSL 或手动修改 WSL 的 `/etc/hosts`
+
+### WSL 额外问题
+
+即使 Windows hosts 修复了，WSL 内部可能还在用旧的 DNS 解析。
+
+**临时解决方案**（WSL 内手动加 IP）：
+创建 `/etc/wsl.conf` 禁用自动 hosts 生成：
+```ini
+[network]
+generateHosts = false
+```
+然后手动编辑 `/etc/hosts` 添加 GitHub IP：
+```
+140.82.114.4 github.com
+140.82.114.4 api.github.com
+140.82.114.4 github.io
+```
+
+### GitHub IP 参考
+
+```
+140.82.114.4  github.com
+140.82.113.4  api.github.com
+```
+
+> 📅 文档更新日期：2026-05-11
