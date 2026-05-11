@@ -396,3 +396,93 @@ export const toolsData = {
 然后在 Home.vue、ToolCategory.vue、ToolDetail.vue 中 import 这个数据源，而不是各自硬编码。
 
 > 📅 文档更新日期：2026-05-10
+
+---
+
+## 🔀 master 与 gh-pages 分支历史分离问题
+
+### 问题现象
+
+执行 `git push origin master:gh-pages --force` 后，远程 gh-pages 没有更新，网站显示旧版本。或者推送显示 "Everything up-to-date" 但网站确实没变。
+
+点击实用工具分类后，BOM辅助工具、设计工具、日常工具的子工具全部消失。
+
+### 根本原因
+
+**master 和 gh-pages 是两个完全独立的 git 历史**，没有共同的 commit 祖先。
+
+正常情况应该是：
+```
+A -- B -- C  (master 和 gh-pages 共祖先)
+```
+
+你的情况：
+```
+master:     X -- Y -- Z  (一个独立历史)
+gh-pages:   A -- B -- C  (另一个独立历史)
+```
+
+"Everything up-to-date" 是 git 在说"你的 master 和远程 master 一样"，但没考虑你是要把 master 的内容覆盖到 gh-pages。
+
+### 症状判断
+
+```powershell
+# 查看本地分支状态
+git branch -vv
+
+# 结果示例：
+# * gh-pages 1bac912 添加开发环境检查脚本     ← 旧代码
+#   master   b55e6bd 添加一键部署脚本         ← 新代码，有工具
+```
+
+如果 master 和 gh-pages 的 commit hash 不同，且 gh-pages 没有最新的代码，说明分支历史已经分离。
+
+### 修复方法
+
+强制推送 master 到 gh-pages：
+
+```powershell
+git push origin master:gh-pages --force
+```
+
+### 预防措施
+
+**使用 deploy.bat 一键部署**，它会自动处理所有步骤：
+1. 构建项目 `npm run build`
+2. 清空旧资源（先删再复制，不会残留）
+3. 强制同步 `git push origin master:gh-pages --force`
+
+**禁止手动执行**：
+- ❌ `git add . && git commit && git push` （会提交到错误分支）
+- ❌ `git push` （只推送当前分支，不同步网站）
+- ❌ `cp -r phase2/dist/. .` （跳过已存在文件，导致旧资源残留）
+
+### 一键部署脚本（deploy.bat）
+
+```bat
+@echo off
+chcp 65001 >nul
+cd /d G:\AI\designhub
+
+REM 构建
+cd phase2 && call npm run build && cd ..
+
+REM 清空旧资源（关键步骤）
+if exist assets rmdir /s /q assets
+if exist designhub rmdir /s /q designhub
+
+REM 复制新构建
+xcopy phase2\dist\* . /e /h /r /y >nul
+
+REM 提交并强制推送到 gh-pages
+git add -A
+git commit -m "deploy: %date% %time%"
+git push origin master:gh-pages --force
+```
+
+### 永久避免问题的原则
+
+1. **始终使用 deploy.bat** - 不需要记任何命令，双击即可
+2. **强制推送** - `--force` 确保网站分支完全同步
+3. **先删再复制** - `rmdir + xcopy` 避免旧资源残留
+4. **不手动 git push** - 避免推到错误分支
