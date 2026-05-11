@@ -395,7 +395,7 @@ export const toolsData = {
 
 然后在 Home.vue、ToolCategory.vue、ToolDetail.vue 中 import 这个数据源，而不是各自硬编码。
 
-> 📅 文档更新日期：2026-05-10
+> 📅 文档更新日期：2026-05-11
 
 ---
 
@@ -486,3 +486,76 @@ git push origin master:gh-pages --force
 2. **强制推送** - `--force` 确保网站分支完全同步
 3. **先删再复制** - `rmdir + xcopy` 避免旧资源残留
 4. **不手动 git push** - 避免推到错误分支
+
+---
+
+## 🏗️ Next.js 静态站点部署到 GitHub Pages 子路径 - Jekyll 忽略 `_next` 目录
+
+### 问题现象
+
+Next.js 静态导出部署到 `https://greatwallcy.github.io/designhub-bom/`（子路径），所有 JS 资源（`_next/static/chunks/...`）返回 **404**。
+
+浏览器访问 `https://greatwallcy.github.io/designhub-bom/_next/static/chunks/main-app.js` 报错，但直接打开 URL 可以看到 JS 内容正常。
+
+### 根本原因
+
+**GitHub Pages 默认启用 Jekyll**，Jekyll 会忽略以下文件和目录：
+- 以下划线 `_` 开头的文件
+- 以下划线 `_` 开头的目录（如 `_next`、`_posts` 等）
+
+Next.js 静态导出的所有资源都在 `_next` 目录下，Jekyll 直接忽略了整个目录，导致浏览器请求这些文件时全部返回 404。
+
+### 修复方法
+
+在部署分支（gh-pages）的**根目录**添加 `.nojekyll` 文件：
+
+```powershell
+cd G:\AI\designhub-bom-site
+echo "" | Out-File -FilePath ".nojekyll" -Encoding ASCII
+git add .nojekyll
+git commit -m "Add .nojekyll to prevent Jekyll from ignoring _next directory"
+git push -f origin main:gh-pages
+```
+
+或者手动在 GitHub 网页上创建 `.nojekyll` 文件（文件名就是 `.nojekyll`，内容为空）。
+
+### 为什么 `.nojekyll` 能解决问题
+
+`.nojekyll` 是 Jekyll 的禁用标志。GitHub Pages 在构建站点时，如果发现仓库根目录有 `.nojekyll` 文件，就**不会对该仓库内容进行 Jekyll 处理**，从而保留 `_next`、`_static` 等目录。
+
+### 排查步骤
+
+1. 打开浏览器访问 `https://greatwallcy.github.io/designhub-bom/_next/static/chunks/main-app.js`
+2. 如果返回 404 → 检查是否有 `.nojekyll` 文件
+3. 如果返回 JS 内容 → 说明 `.nojekyll` 已生效，问题在其他地方
+
+### 预防措施
+
+Next.js 静态导出部署到 GitHub Pages 子路径时：
+1. 确认 `next.config.js` 设置了正确的 `basePath`
+2. 确认构建输出中有 `.nojekyll` 文件
+3. 部署前在本地测试子路径访问：`next start` 或 Vercel preview
+
+### 相关配置参考
+
+**next.config.js**
+```js
+const nextConfig = {
+  output: 'export',
+  basePath: '/designhub-bom',
+  images: { unoptimized: true },
+}
+```
+
+**GitHub Pages 设置**
+- Repository → Settings → Pages → Source: `gh-pages` branch, `/ (root)` folder
+- 确认 Branch 名称正确（不是 `main` 而是 `gh-pages`）
+
+### 受影响项目
+
+| 项目 | 仓库 | 部署地址 |
+|------|------|---------|
+| DesignHub 主站 | `greatwallcy/designhub` | `https://greatwallcy.github.io/designhub/` |
+| BOM 工具站 | `greatwallcy/designhub-bom` | `https://greatwallcy.github.io/designhub-bom/` |
+
+> 📅 文档更新日期：2026-05-11
