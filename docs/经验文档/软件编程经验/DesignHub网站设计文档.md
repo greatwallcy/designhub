@@ -476,7 +476,38 @@ dist 仓库的 git 历史只有一个 "Initial commit"，`git checkout HEAD -- f
 
 `ProjectDetail.vue` 使用 Giscus 做 GitHub Issues 评论，通过 `onMounted` 动态创建 `<script>` 标签加载。不能直接在 Vue template 中写 `<script>` 标签。
 
-### 9.5 BOM工具链接注意
+### 9.5 页面版本和时间显示
+
+每个页面都会在顶部导航栏右侧和底部 footer 显示当前版本号和更新时间。
+
+**实现方式**：
+
+1. `version.json` 存储版本信息（位于 `phase2/version.json`）：
+   ```json
+   {
+     "version": "V1.0.1",
+     "updated": "2026-05-12 00:41"
+   }
+   ```
+
+2. `App.vue` 导入并使用：
+   ```javascript
+   import versionData from '../version.json'
+   const siteVersion = ref(versionData.version)
+   const siteUpdated = ref(versionData.updated)
+   ```
+
+3. **顶部导航栏**（右上角）显示：`{{ siteVersion }} {{ siteUpdated }}`
+
+4. **底部 footer** 显示：`版本 {{ siteVersion }} ({{ siteUpdated }})` + `© {{ currentYear }}`
+
+**更新版本流程**：
+- 修改 `phase2/version.json` 中的 `version` 和 `updated` 字段
+- 重新构建并部署：`npm run build` → `cd dist && git add -A && git commit -m "Version Vx.x.x" && git push -f origin master:gh-pages`
+
+**注意**：之前路径写成了 `../../version.json`（相对于 `src/App.vue` 会指向 `designhub/` 而不是 `phase2/`），已修复为 `../version.json`。
+
+### 9.6 BOM工具链接注意
 
 BOM工具首页（iframe加载器）的工具链接格式：
 - BOM匹配工具 → `/designhub-bom/bom-match`
